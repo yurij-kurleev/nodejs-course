@@ -1,14 +1,17 @@
+require('dotenv').config()
 const http = require('http');
 const express = require('express');
 const { PORT } = require('./config');
 const logger = require('./logger');
-const eventsRouter = require('./events/router');
+const eventsRouter = require('./routers/events');
+const usersRouter = require('./routers/users');
 
 const app = express();
 
 app.use(express.json())
 
 app.use('/events', eventsRouter);
+app.use('/users', usersRouter);
 
 app.all('*', (req, res) => {
   res.status(200).send('Welcome to the NodeJS course API!');

@@ -1,4 +1,5 @@
-const EventsRepository = require('./repository');
+const EventsRepository = require('../repositories/events');
+const EventsUsersRepository = require('../repositories/events_users');
 
 const EventsController = {
   show: async (req, res, next) => {
@@ -22,21 +23,17 @@ const EventsController = {
       next(err);
     }
   },
-  batchShow: async (req, res, next) => {
-    try {
-      EventsRepository.batchFind().pipe(res);
-    } catch (err) {
-      next(err);
-    }
-  },
   create: async (req, res, next) => {
     try {
       const { body: newItem } = req;
-      const isEventExist = await EventsRepository.findOne(newItem.id);
-      if (isEventExist) {
-        return res.status(409).send('Event already exists!')
-      }
       const createdItem = await EventsRepository.create(newItem);
+      if (newItem.participantsIds) {
+        const eventsUsersData = newItem.participantsIds
+          .map((participantId) => ({ userId: participantId, eventId: createdItem.id }));
+        // don't need to wait until finish, can proceed next
+        console.log('eventsUsersData', eventsUsersData)
+        EventsUsersRepository.bulkCreate(eventsUsersData)
+      }
       res.json(createdItem);
     } catch (err) {
       next(err);
@@ -49,8 +46,22 @@ const EventsController = {
       if (!eventToUpdate) {
         return res.status(404).send('Event doesn\'t exist!')
       }
-      const updatedItem = await EventsRepository.update({ ...eventToUpdate, ...body });
-      res.json(updatedItem);
+      await EventsRepository.update(body, eventId);
+      if (body.participantsIds) {
+        const eventsUsers = await EventsUsersRepository.findByEventId(eventId)
+        const newEventsUsers = body.participantsIds
+          // leave only unique participants (not added)
+          .filter((participantId) => {
+            return !eventsUsers.find((eU) => eU.userId === participantId)
+          })
+          .map((participantId) => ({ userId: participantId, eventId }));
+        // don't need to wait until finish, can proceed next
+        EventsUsersRepository.bulkCreate(newEventsUsers)
+      }
+      res.json({
+        ...eventToUpdate.dataValues,
+        ...body
+      });
     } catch (err) {
       next(err);
     }
