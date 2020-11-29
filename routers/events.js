@@ -1,11 +1,10 @@
 const express = require('express');
 const logger = require('../logger');
-const EventsController = require('./controller');
+const EventsController = require('../controllers/events');
 
 const router = express.Router({ mergeParams: true });
 
 router.get('/', EventsController.show)
-router.get('/events-batch', EventsController.batchShow)
 router.get('/:eventId', EventsController.showOne)
 router.post('/', EventsController.create)
 router.put('/:eventId', EventsController.update)
